@@ -1,0 +1,14 @@
+# don't upload memory files — personal data
+*_memory.json
+
+# don't upload virtual environment
+.venv/
+venv/
+
+# don't upload Python cache
+__pycache__/
+*.pyc
+
+# don't upload OS files
+.DS_Store
+Thumbs.db
