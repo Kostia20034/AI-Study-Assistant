@@ -76,20 +76,38 @@ for message in st.session_state.chat_history:
 user_input = st.chat_input("Davai zadavai")
 
 if user_input:
-    # add user message to display
     st.session_state.chat_history.append({
         "role": "user",
         "content": user_input
     })
 
-    # get response from Nova
     with st.spinner("Nova is thinking..."):
         if user_input == "quiz":
             response = st.session_state.pet.quiz_me()
+            st.session_state.chat_history.append({
+                "role": "assistant",
+                "content": response
+            })
         else:
-            context = st.session_state.rag.get_context(user_input)
+            # get chunks with sources
+            sources = st.session_state.rag.search_with_sources(user_input)
+            context = "\n\n".join([chunk for chunk, distance in sources])
+
             if context.strip():
-                # send context + question to Nova
+                # build source message — your idea
+                source_message = "🔍 **RAG found these matches from your notes:**\n\n"
+                for i, (chunk, distance) in enumerate(sources):
+                    # convert distance to similarity percentage
+                    similarity = round((1 - distance) * 100)
+                    source_message += f"**Match {i+1}** ({similarity}% similar):\n_{chunk[:150]}..._\n\n"
+
+                # add source message to chat
+                st.session_state.chat_history.append({
+                    "role": "assistant",
+                    "content": source_message
+                })
+
+                # now get Nova's actual response
                 response = st.session_state.pet.chat(f"""
 Use this context from the student's notes to answer the question.
 If the context doesn't contain the answer, use your own knowledge.
@@ -100,11 +118,11 @@ Context:
 Question: {user_input}
 """)
             else:
-                # no context found — answer from training
                 response = st.session_state.pet.chat(user_input)
 
-    st.session_state.chat_history.append({
-        "role": "assistant",
-        "content": response
-    })
+            st.session_state.chat_history.append({
+                "role": "assistant",
+                "content": response
+            })
+
     st.rerun()

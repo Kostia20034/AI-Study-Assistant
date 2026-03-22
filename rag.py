@@ -51,7 +51,7 @@ class RAGPipeline:
 
         return chunks
 
-    def search(self, query, n_results=3):
+    def search_with_sources(self, query, n_results=3):
         # embed the query
         query_embedding = self.embedder.encode(query).tolist()
         
@@ -61,9 +61,12 @@ class RAGPipeline:
             n_results=n_results
         )
         
+        chunks = results['documents'][0]
+        distances = results['distances'][0]
+        
         # return just the text chunks
-        return results['documents'][0]
+        return list(zip(chunks,distances))
 
     def get_context(self, query):
-        chunks = self.search(query)
+        chunks = self.search_with_sources(query)
         return "\n\n".join(chunks)
