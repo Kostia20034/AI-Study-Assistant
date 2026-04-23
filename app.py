@@ -1,7 +1,9 @@
 import streamlit as st
 from pet import AIPet
 from rag import RAGPipeline
-
+from PIL import Image
+import io
+import base64
 
 st.set_page_config(page_title="AI Pet", page_icon="🐾")
 st.title("🐾 AI Pet — Study Assistant")
@@ -29,7 +31,7 @@ st.sidebar.title("📚 Upload Notes")
 #upload file menu
 uploaded_file = st.sidebar.file_uploader(
     "Upload your class notes",
-    type=["txt", "pdf"]
+    type=['pdf', 'txt', 'jpg', 'png']
 )
 #process pdf or text file
 if uploaded_file is not None:
@@ -41,6 +43,16 @@ if uploaded_file is not None:
         file_content = ""
         for page in reader.pages:
             file_content += page.extract_text()
+    if uploaded_file.type in ["image/jpeg", "image/png"]:
+        image = Image.open(uploaded_file)
+        st.image(image, caption = "Photo", use_column_width=True)
+        
+        base64_img = base64.b64encode(uploaded_file.getvalue()).decode('utf-8')
+        
+        if st.button("Analyze Image"):
+            with st.spinner("Nova is looking at the photo..."):
+                describing = st.session_state.analyze_image(base64_img)
+                st.write(describing)
     else:
         file_content = uploaded_file.read().decode("utf-8")
     

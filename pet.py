@@ -1,6 +1,7 @@
 import urllib.request
 import json
 import os #add output stream
+import base64 #string wrapper for ai
 # initialize class
 class AIPet:
   # constructor used for initialization of the obj
@@ -32,17 +33,24 @@ class AIPet:
       # 3) create requst
       # 4) grab and save server response
       # 5) return ai's response
-    def chat(self, user_message):
+    def encode_image(image_path):
+      with open(image_path, "rb") as im_file:
+        return base64.b64encode(im_file.read()).decode('utf-8')      
+    def chat(self, user_message, base64_image = None):
         # add user message to history
-        self.messages.append({
+        new_message = {
             "role": "user",
             "content": user_message
-        })
+        }
+        if base64_image:
+            new_message["images"] = [base64_image]
+
+        self.messages.append(new_message)
 
         # send full conversation to ollama
         # map -> json -> bytes
         data = json.dumps({
-            "model": "llama3.2",
+            "model": "llama3.2-vision",
             "messages": self.messages,
             "stream": False
         }).encode('utf-8')
