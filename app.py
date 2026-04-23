@@ -1,140 +1,95 @@
 import streamlit as st
 from pet import AIPet
 from rag import RAGPipeline
-from PIL import Image
-import io
 import base64
 
 st.set_page_config(page_title="AI Pet", page_icon="🐾")
 st.title("🐾 AI Pet — Study Assistant")
 
-# sidebar — pick your subject
+# Sidebar - Subject Selection
 st.sidebar.title("Your Pet")
 subject = st.sidebar.selectbox(
     "Choose subject:",
     ["Machine Learning", "Python", "Data Structures", "Math"]
 )
 
-# initialize pet with name, subject and chat history
+# Initialize Pet
 if "pet" not in st.session_state or st.session_state.get("current_subject") != subject:
     st.session_state.pet = AIPet("Nova", subject)
     st.session_state.current_subject = subject
     st.session_state.chat_history = []
- #intialize db with subject category
+
+# Initialize RAG
 if "rag" not in st.session_state:
     with st.spinner("Loading RAG pipeline..."):
         safe_subject = subject.replace(" ", "_")
-        st.session_state.rag = RAGPipeline(collection_name=f"notes_{safe_subject}")   
-    
+        st.session_state.rag = RAGPipeline(collection_name=f"notes_{safe_subject}")
+
 st.sidebar.divider()
-st.sidebar.title("📚 Upload Notes")
-#upload file menu
-uploaded_file = st.sidebar.file_uploader(
-    "Upload your class notes",
-    type=['pdf', 'txt', 'jpg', 'png']
-)
-#process pdf or text file
+st.sidebar.title("📚 Upload Material")
+
+uploaded_file = st.sidebar.file_uploader("Upload notes (PDF/TXT) or Image", type=["txt", "pdf", "png", "jpg"])
+
+# Logic for handling files
 if uploaded_file is not None:
-    # read the file
-    if uploaded_file.type == "application/pdf":
-        from pypdf import PdfReader
-        import io
-        reader = PdfReader(io.BytesIO(uploaded_file.read()))
+    # 1. Handle Images
+    if uploaded_file.type in ["image/png", "image/jpeg"]:
+        st.sidebar.image(uploaded_file)
+        if st.sidebar.button("Analyze Image"):
+            with st.spinner("Nova is looking..."):
+                img_bytes = uploaded_file.getvalue()
+                base64_img = base64.b64encode(img_bytes).decode('utf-8')
+                response = st.session_state.pet.chat("What is in this image?", base64_img)
+                st.session_state.chat_history.append({"role": "assistant", "content": response})
+
+    # 2. Handle Documents (PDF/TXT)
+    else:
         file_content = ""
-        for page in reader.pages:
-            file_content += page.extract_text()
-    if uploaded_file.type in ["image/jpeg", "image/png"]:
-        image = Image.open(uploaded_file)
-        st.image(image, caption = "Photo", use_column_width=True)
-        
-        base64_img = base64.b64encode(uploaded_file.getvalue()).decode('utf-8')
-        
-        if st.button("Analyze Image"):
-            with st.spinner("Nova is looking at the photo..."):
-                describing = st.session_state.analyze_image(base64_img)
-                st.write(describing)
-    else:
-        file_content = uploaded_file.read().decode("utf-8")
-    
-
-    # feed content to Nova
-    if "file_loaded" not in st.session_state or st.session_state.file_loaded != uploaded_file.name:
-        st.session_state.file_loaded = uploaded_file.name
-        
-        with st.spinner("Processing your notes..."):
-            num_chunks = st.session_state.rag.add_document(
-                file_content,
-                uploaded_file.name
-            )
-        
-        confirmation = f"📚 I've processed your notes into {num_chunks} searchable chunks. Ask me anything about them!"
-        
-        st.session_state.chat_history.append({
-            "role": "assistant",
-            "content": confirmation
-        })
-        st.sidebar.success(f"✅ {uploaded_file.name} loaded!")
-        
-# display chat history
-for message in st.session_state.chat_history:
-    if message["role"] == "user":
-        with st.chat_message("user", avatar="🧑"):
-            st.write(message["content"])
-    else:
-        with st.chat_message("assistant", avatar="🐾"):
-            st.write(message["content"])
-
-# chat input at bottom
-user_input = st.chat_input("Davai zadavai")
-
-if user_input:
-    st.session_state.chat_history.append({
-        "role": "user",
-        "content": user_input
-    })
-
-    with st.spinner("Nova is thinking..."):
-        if user_input == "quiz":
-            response = st.session_state.pet.quiz_me()
-            st.session_state.chat_history.append({
-                "role": "assistant",
-                "content": response
-            })
+        if uploaded_file.type == "application/pdf":
+            from pypdf import PdfReader
+            import io
+            reader = PdfReader(io.BytesIO(uploaded_file.read()))
+            for page in reader.pages:
+                text = page.extract_text()
+                if text: file_content += text
         else:
-            # get chunks with sources
-            sources = st.session_state.rag.search_with_sources(user_input)
-            context = "\n\n".join([chunk for chunk, distance in sources])
+            file_content = uploaded_file.read().decode("utf-8")
 
-            if context.strip():
-                # build source message — your idea
-                source_message = "🔍 **RAG found these matches from your notes:**\n\n"
-                for i, (chunk, distance) in enumerate(sources):
-                    # convert distance to similarity percentage
-                    similarity = round((1 - distance) * 100)
-                    source_message += f"**Match {i+1}** ({similarity}% similar):\n_{chunk[:150]}..._\n\n"
+        if st.sidebar.button("✅ Process Notes"):
+            with st.spinner("Processing..."):
+                num_chunks = st.session_state.rag.add_document(file_content, uploaded_file.name)
+                st.sidebar.success(f"Added {num_chunks} chunks!")
 
-                # add source message to chat
-                st.session_state.chat_history.append({
-                    "role": "assistant",
-                    "content": source_message
-                })
+# Chat Interface
+for msg in st.session_state.chat_history:
+    with st.chat_message(msg["role"]):
+        st.write(msg["content"])
 
-                # now get Nova's actual response
-                response = st.session_state.pet.chat(f"""
-Use this context from the student's notes to answer the question.
-If the context doesn't contain the answer, use your own knowledge.
+if user_input := st.chat_input("Ask Nova anything..."):
+    st.session_state.chat_history.append({"role": "user", "content": user_input})
+    with st.chat_message("user"):
+        st.write(user_input)
 
-Context:
-{context}
+    with st.chat_message("assistant"):
+        # RAG Logic
+        sources = st.session_state.rag.search_with_sources(user_input)
+        context = "\n\n".join([chunk for chunk, dist in sources])
 
-Question: {user_input}
-""")
-            else:
-                response = st.session_state.pet.chat(user_input)
-
-            st.session_state.chat_history.append({
-                "role": "assistant",
-                "content": response
-            })
-
-    st.rerun()
+        if context.strip():
+            # Show sources
+            source_info = "🔍 **Found in notes:**\n"
+            for i, (chunk, dist) in enumerate(sources):
+                source_info += f"- Match {i+1}: _{chunk[:100]}..._\n"
+            st.info(source_info)
+            
+            # RAG prompt
+            rag_prompt = (
+                f"Use this context to answer: \n{context}\n\n"
+                f"Question: {user_input}"
+            )
+            response = st.session_state.pet.chat(rag_prompt)
+        else:
+            response = st.session_state.pet.chat(user_input)
+        
+        st.write(response)
+        st.session_state.chat_history.append({"role": "assistant", "content": response})
