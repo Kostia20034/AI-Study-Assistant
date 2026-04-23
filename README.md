@@ -1,25 +1,49 @@
-# 🐾 AI Pet — Local AI Study Assistant
+# 🐾 AI Study Assistant
 
-A locally running AI study assistant that learns from your class notes.
+> A locally running AI-powered study tool that learns from your own class notes and quizzes you on them.
+
+No cloud. No API keys. Runs entirely on your machine using a local LLM.
+
+## Why I Built This
+Studying from notes is slow. I wanted a tool that could answer questions *based on my actual class material* — not generic internet answers. So I built one.
 
 ## Features
-- 💬 Chat with your AI pet about any subject
-- 📚 Upload class notes (PDF or TXT) 
-- 🧠 Persistent memory between sessions
-- 📝 Quiz mode for practice questions
-- 🎯 Specialized per subject
+- 💬 Chat with an AI about any subject using your own notes as context
+- 📚 Upload class notes in PDF or TXT format
+- 🧠 Persistent memory between study sessions
+- 📝 Quiz mode — generates practice questions from your notes
+- 🎯 Subject-specific assistants
 
 ## Tech Stack
-- Python
-- Ollama (local LLM runner)
-- LLaMA 3.2 (3B parameter model)
-- Streamlit (UI)
+| Tool | Purpose |
+|---|---|
+| Python | Core language |
+| Ollama | Local LLM runner |
+| LLaMA 3.2 (3B) | AI model (runs offline) |
+| Streamlit | Web UI |
+| pypdf | PDF parsing |
 
 ## How to Run
-1. Install Ollama from ollama.com
-2. Pull the model: `ollama pull llama3.2`
-3. Install dependencies: `pip install streamlit pypdf`
-4. Run: `python -m streamlit run app.py`
+```bash
+# 1. Install Ollama
+# https://ollama.com
 
+# 2. Pull the model
+ollama pull llama3.2
 
-Copied from: Editing AI-Study-Assistant/README.md at main · Kostia20034/AI-Study-Assistant - <https://github.com/Kostia20034/AI-Study-Assistant/edit/main/README.md>
+# 3. Install Python dependencies
+pip install streamlit pypdf
+
+# 4. Run the app
+python -m streamlit run app.py
+```
+Then open http://localhost:8501 in your browser.
+
+## What I Learned
+- Integrating local LLMs into a real Python application
+- Building document-aware AI context (RAG-style)
+- Designing a practical tool that solves an actual problem
+
+## Contact
+- Email: kostiantyn_pa@gmail.com  
+- LinkedIn: https://www.linkedin.com/in/kostiantynpavlyshyn/
